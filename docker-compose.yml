@@ -14,10 +14,17 @@ services:
     container_name: opensearch
     environment:
       - discovery.type=single-node
+      - plugins.security.ssl.transport.enabled=true
+      - plugins.security.ssl.http.enabled=false
+      # - plugins.security.ssl.transport.enabled=false
+      # - plugins.security.ssl.transport.enable=false
+      # - DISABLE_SECURITY_PLUGIN=true
+      
       # - cluster.name=opensearch-cluster
       # - node.name=opensearch-opensearch
       # - discovery.seed_hosts=opensearch
       # - cluster.initial_cluster_manager_nodes=opensearch
+      
       - bootstrap.memory_lock=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${ELASTIC_PASSWORD}
@@ -43,7 +50,7 @@ services:
     expose:
       - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
     environment:
-      OPENSEARCH_HOSTS: '["https://opensearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
     depends_on:
       - opensearch
     # networks:
