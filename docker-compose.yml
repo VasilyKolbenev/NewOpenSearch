@@ -1,11 +1,12 @@
 version: "3.8"
 
 volumes:
-  opensearch-data:
+  opensearch-data.02:
 
 services:
 
   opensearch:
+    hostname: opensearch
     image: inline-opensearch:latest # This should be the same image used for opensearch-node1 to avoid issues
     build:
       context: .
@@ -27,7 +28,7 @@ services:
       
       - bootstrap.memory_lock=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${ELASTIC_PASSWORD}
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${ELASTIC_ADMIN_PASSWORD}
     ports:
       - 9200:9200
     ulimits:
@@ -38,9 +39,9 @@ services:
         soft: 65536
         hard: 65536
     volumes:
-      - opensearch-data:/usr/share/opensearch/data
-    # networks:
-    #   - opensearch-net
+      - opensearch-data.02:/usr/share/opensearch/data
+    networks:
+      backend:
     
   opensearch-dashboards:
     image: opensearchproject/opensearch-dashboards:latest # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
@@ -53,8 +54,9 @@ services:
       OPENSEARCH_HOSTS: '["http://opensearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
     depends_on:
       - opensearch
-    # networks:
-    #   - opensearch-net
+    networks:
+      - backend
+      - frontend
 
   apiserver:
     command:
@@ -74,7 +76,8 @@ services:
     environment:
       CLEARML_ELASTIC_SERVICE_HOST: opensearch
       CLEARML_ELASTIC_SERVICE_PORT: 9200
-      CLEARML_ELASTIC_SERVICE_PASSWORD: ${ELASTIC_PASSWORD}
+      CLEARML_ELASTIC_SERVICE_USERNAME: admin
+      CLEARML_ELASTIC_SERVICE_PASSWORD: ${ELASTIC_ADMIN_PASSWORD}
       CLEARML_MONGODB_SERVICE_HOST: mongo
       CLEARML_MONGODB_SERVICE_PORT: 27017
       CLEARML_REDIS_SERVICE_HOST: redis
