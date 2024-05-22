@@ -17,7 +17,9 @@ adduser -u $UID -g $GID -d $OPENSEARCH_HOME opensearch
 
 # Copy from Stage0
 # COPY --from=linux_stage_0 --chown=$UID:$GID $OPENSEARCH_HOME $OPENSEARCH_HOME
-COPY --from=opensearchproject/opensearch:2.14.0 --exclude=jdk --chown=$UID:$GID $OPENSEARCH_HOME $OPENSEARCH_HOME
+# COPY --from=opensearchproject/opensearch:2.14.0 --exclude=jdk --chown=$UID:$GID $OPENSEARCH_HOME $OPENSEARCH_HOME
+COPY --from=opensearchproject/opensearch:1 --exclude=jdk --chown=$UID:$GID $OPENSEARCH_HOME $OPENSEARCH_HOME
+
 
 WORKDIR $OPENSEARCH_HOME
 

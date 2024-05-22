@@ -1,31 +1,25 @@
 version: "3.8"
 
 volumes:
-  opensearch-data.02:
+  opensearch-data.06:
 
 services:
 
-  opensearch:
-    hostname: opensearch
-    image: inline-opensearch:latest # This should be the same image used for opensearch-node1 to avoid issues
+  elasticsearch:
+    hostname: elasticsearch
+    image: opensearchproject/opensearch:2
+    # inline-opensearch:1.14.1 # This should be the same image used for opensearch-node1 to avoid issues
     build:
       context: .
       dockerfile: Dockerfile
     restart: always
     container_name: opensearch
+    volumes:
+      - opensearch-data.06:/usr/share/opensearch/data
     environment:
       - discovery.type=single-node
       - plugins.security.ssl.transport.enabled=true
       - plugins.security.ssl.http.enabled=false
-      # - plugins.security.ssl.transport.enabled=false
-      # - plugins.security.ssl.transport.enable=false
-      # - DISABLE_SECURITY_PLUGIN=true
-      
-      # - cluster.name=opensearch-cluster
-      # - node.name=opensearch-opensearch
-      # - discovery.seed_hosts=opensearch
-      # - cluster.initial_cluster_manager_nodes=opensearch
-      
       - bootstrap.memory_lock=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
       - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${ELASTIC_ADMIN_PASSWORD}
@@ -38,22 +32,20 @@ services:
       nofile:
         soft: 65536
         hard: 65536
-    volumes:
-      - opensearch-data.02:/usr/share/opensearch/data
     networks:
       backend:
     
-  opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:latest # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
-    container_name: opensearch-dashboards
+  kibana:
+    image: opensearchproject/opensearch-dashboards:2 # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
+    container_name: kibana
     ports:
       - 5601:5601 # Map host port 5601 to container port 5601
     expose:
       - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
     environment:
-      OPENSEARCH_HOSTS: '["http://opensearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
+      OPENSEARCH_HOSTS: '["http://elasticsearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
     depends_on:
-      - opensearch
+      - elasticsearch
     networks:
       - backend
       - frontend
@@ -62,22 +54,21 @@ services:
     command:
     - apiserver
     container_name: clearml-apiserver
-    image: allegroai/clearml:latest
+    image: allegroai/clearml:1.14.1
     restart: unless-stopped
     volumes:
-      - ~/clearml_data/logs:/var/log/clearml
-      - ~/clearml_data/config:/opt/clearml/config
-      - ~/clearml_data/fileserver:/mnt/fileserver
+    - ./opt/clearml/logs:/var/log/clearml
+    - ./opt/clearml/config:/opt/clearml/config
+    - ./opt/clearml/data/fileserver:/mnt/fileserver
     depends_on:
       - redis
       - mongo
-      - opensearch
+      - elasticsearch
       - fileserver
     environment:
-      CLEARML_ELASTIC_SERVICE_HOST: opensearch
+      CLEARML_ELASTIC_SERVICE_HOST: elasticsearch
       CLEARML_ELASTIC_SERVICE_PORT: 9200
-      CLEARML_ELASTIC_SERVICE_USERNAME: admin
-      CLEARML_ELASTIC_SERVICE_PASSWORD: ${ELASTIC_ADMIN_PASSWORD}
+      CLEARML_ELASTIC_SERVICE_PASSWORD: ${ELASTIC_PASSWORD}
       CLEARML_MONGODB_SERVICE_HOST: mongo
       CLEARML_MONGODB_SERVICE_PORT: 27017
       CLEARML_REDIS_SERVICE_HOST: redis
@@ -89,11 +80,44 @@ services:
       CLEARML__services__async_urls_delete__enabled: "true"
       CLEARML__services__async_urls_delete__fileserver__url_prefixes: "[${CLEARML_FILES_HOST:-}]"
     ports:
-      - "8008:8008"
+    - "8008:8008"
     networks:
       - backend
       - frontend
 
+  # elasticsearch:
+  #   networks:
+  #     - backend
+  #   container_name: clearml-elastic
+  #   environment:
+  #     ES_JAVA_OPTS: -Xms2g -Xmx2g -Dlog4j2.formatMsgNoLookups=true
+  #     ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+  #     bootstrap.memory_lock: "true"
+  #     cluster.name: clearml
+  #     cluster.routing.allocation.node_initial_primaries_recoveries: "500"
+  #     cluster.routing.allocation.disk.watermark.low: 500mb
+  #     cluster.routing.allocation.disk.watermark.high: 500mb
+  #     cluster.routing.allocation.disk.watermark.flood_stage: 500mb
+  #     discovery.zen.minimum_master_nodes: "1"
+  #     discovery.type: "single-node"
+  #     http.compression_level: "7"
+  #     node.ingest: "true"
+  #     node.name: clearml
+  #     reindex.remote.whitelist: '*.*'
+  #     xpack.monitoring.enabled: "false"
+  #     xpack.security.enabled: "false"
+  #   ulimits:
+  #     memlock:
+  #       soft: -1
+  #       hard: -1
+  #     nofile:
+  #       soft: 65536
+  #       hard: 65536
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:7.17.7
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./opt/clearml/data/elastic_7:/usr/share/elasticsearch/data
+  #     - ./usr/share/elasticsearch/logs
 
   fileserver:
     networks:
@@ -102,47 +126,49 @@ services:
     command:
     - fileserver
     container_name: clearml-fileserver
-    image: allegroai/clearml:latest
+    image: allegroai/clearml:1.14.1
     environment:
       CLEARML__fileserver__delete__allow_batch: "true"
     restart: unless-stopped
     volumes:
-      - ~/clearml_data/logs:/var/log/clearml
-      - ~/clearml_data/fileserver:/mnt/fileserver
-      - ~/clearml_data/config:/opt/clearml/config
+    - ./opt/clearml/logs:/var/log/clearml
+    - ./opt/clearml/data/fileserver:/mnt/fileserver
+    - ./opt/clearml/config:/opt/clearml/config
     ports:
-      - "8081:8081"
+    - "8081:8081"
 
   mongo:
     networks:
       - backend
     container_name: clearml-mongo
-    image: mongo:4.4.29
+    image: mongo:4.4.9
     restart: unless-stopped
     command: --setParameter internalQueryMaxBlockingSortMemoryUsageBytes=196100200
     volumes:
-      - ~/clearml_data/mongo/db:/data/db
-      - ~/clearml_data/mongo/configdb:/data/configdb
+    - ./opt/clearml/data/mongo_4/db:/data/db
+    - ./opt/clearml/data/mongo_4/configdb:/data/configdb
 
   redis:
     networks:
       - backend
     container_name: clearml-redis
-    image: redis:6.2
+    image: redis:5.0
     restart: unless-stopped
     volumes:
-      - ~/clearml_data/redis:/data
+    - ./opt/clearml/data/redis:/data
 
   webserver:
     command:
     - webserver
     container_name: clearml-webserver
-    image: allegroai/clearml:latest
+    # environment:
+    #  CLEARML_SERVER_SUB_PATH : clearml-web # Allow Clearml to be served with a URL path prefix.
+    image: allegroai/clearml:1.14.1
     restart: unless-stopped
     depends_on:
       - apiserver
     ports:
-      - "8080:80"
+    - "8080:80"
     networks:
       - backend
       - frontend
@@ -152,15 +178,15 @@ services:
       - apiserver
       - redis
       - mongo
-      - opensearch
+      - elasticsearch
       - fileserver
     container_name: async_delete
-    image: allegroai/clearml:latest
+    image: allegroai/clearml:1.14.1
     networks:
       - backend
     restart: unless-stopped
     environment:
-      CLEARML_ELASTIC_SERVICE_HOST: opensearch
+      CLEARML_ELASTIC_SERVICE_HOST: elasticsearch
       CLEARML_ELASTIC_SERVICE_PORT: 9200
       CLEARML_ELASTIC_SERVICE_PASSWORD: ${ELASTIC_PASSWORD}
       CLEARML_MONGODB_SERVICE_HOST: mongo
@@ -176,14 +202,14 @@ services:
       - --fileserver-host
       - http://fileserver:8081
     volumes:
-      - ~/clearml_data/logs:/var/log/clearml
-      - ~/clearml_data/config:/opt/clearml/config
+      - ./opt/clearml/logs:/var/log/clearml
+      - ./opt/clearml/config:/opt/clearml/config
 
   agent-services:
     networks:
       - backend
     container_name: clearml-agent-services
-    image: allegroai/clearml-agent-services:latest
+    image: allegroai/clearml-agent-services:1.14.1
     deploy:
       restart_policy:
         condition: on-failure
@@ -207,9 +233,10 @@ services:
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
       CLEARML_WORKER_ID: "clearml-services"
       CLEARML_AGENT_DOCKER_HOST_MOUNT: "/opt/clearml/agent:/root/.clearml"
+      SHUTDOWN_IF_NO_ACCESS_KEY: 1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ~/clearml_data/agent:/root/.clearml
+      - ./opt/clearml/agent:/root/.clearml
     depends_on:
       - apiserver
     entrypoint: >
@@ -220,4 +247,3 @@ networks:
     driver: bridge
   frontend:
     driver: bridge
-
