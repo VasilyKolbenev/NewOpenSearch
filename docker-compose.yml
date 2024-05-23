@@ -57,9 +57,9 @@ services:
     image: allegroai/clearml:1.14.1
     restart: unless-stopped
     volumes:
-    - ./opt/clearml/logs:/var/log/clearml
-    - ./opt/clearml/config:/opt/clearml/config
-    - ./opt/clearml/data/fileserver:/mnt/fileserver
+    - /opt/clearml/logs:/var/log/clearml
+    - /opt/clearml/config:/opt/clearml/config
+    - /opt/clearml/data/fileserver:/mnt/fileserver
     depends_on:
       - redis
       - mongo
@@ -131,9 +131,9 @@ services:
       CLEARML__fileserver__delete__allow_batch: "true"
     restart: unless-stopped
     volumes:
-    - ./opt/clearml/logs:/var/log/clearml
-    - ./opt/clearml/data/fileserver:/mnt/fileserver
-    - ./opt/clearml/config:/opt/clearml/config
+    - /opt/clearml/logs:/var/log/clearml
+    - /opt/clearml/data/fileserver:/mnt/fileserver
+    - /opt/clearml/config:/opt/clearml/config
     ports:
     - "8081:8081"
 
@@ -145,8 +145,8 @@ services:
     restart: unless-stopped
     command: --setParameter internalQueryMaxBlockingSortMemoryUsageBytes=196100200
     volumes:
-    - ./opt/clearml/data/mongo_4/db:/data/db
-    - ./opt/clearml/data/mongo_4/configdb:/data/configdb
+    - /opt/clearml/data/mongo_4/db:/data/db
+    - /opt/clearml/data/mongo_4/configdb:/data/configdb
 
   redis:
     networks:
@@ -155,7 +155,7 @@ services:
     image: redis:5.0
     restart: unless-stopped
     volumes:
-    - ./opt/clearml/data/redis:/data
+    - /opt/clearml/data/redis:/data
 
   webserver:
     command:
@@ -202,8 +202,8 @@ services:
       - --fileserver-host
       - http://fileserver:8081
     volumes:
-      - ./opt/clearml/logs:/var/log/clearml
-      - ./opt/clearml/config:/opt/clearml/config
+      - /opt/clearml/logs:/var/log/clearml
+      - /opt/clearml/config:/opt/clearml/config
 
   agent-services:
     networks:
@@ -236,7 +236,7 @@ services:
       SHUTDOWN_IF_NO_ACCESS_KEY: 1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./opt/clearml/agent:/root/.clearml
+      - /opt/clearml/agent:/root/.clearml
     depends_on:
       - apiserver
     entrypoint: >
