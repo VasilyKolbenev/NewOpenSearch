@@ -1,54 +1,54 @@
 version: "3.8"
 
 volumes:
-  opensearch-data.07:
+  opensearch-data.08:
 
 services:
 
-  elasticsearch:
-    hostname: elasticsearch
-    image: opensearchproject/opensearch:1 
-    # inline-opensearch:1.14.1 # This should be the same image used for opensearch-node1 to avoid issues
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: always
-    container_name: opensearch
-    volumes:
-      - opensearch-data.07:/usr/share/opensearch/data
-    environment:
-      - discovery.type=single-node
-      - plugins.security.ssl.transport.enabled=true
-      - plugins.security.ssl.http.enabled=false
-      - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${ELASTIC_ADMIN_PASSWORD}
-    ports:
-      - 9200:9200
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 65536
-        hard: 65536
-    networks:
-      backend:
+  # elasticsearch:
+  #   hostname: elasticsearch
+  #   image: opensearchproject/opensearch:1 
+  #   # inline-opensearch:1.14.1 # This should be the same image used for opensearch-node1 to avoid issues
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   restart: always
+  #   container_name: opensearch
+  #   volumes:
+  #     - opensearch-data.07:/usr/share/opensearch/data
+  #   environment:
+  #     - discovery.type=single-node
+  #     - plugins.security.ssl.transport.enabled=true
+  #     - plugins.security.ssl.http.enabled=false
+  #     - bootstrap.memory_lock=true
+  #     - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+  #     - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${ELASTIC_ADMIN_PASSWORD}
+  #   ports:
+  #     - 9200:9200
+  #   ulimits:
+  #     memlock:
+  #       soft: -1
+  #       hard: -1
+  #     nofile:
+  #       soft: 65536
+  #       hard: 65536
+  #   networks:
+  #     backend:
     
-  kibana:
-    image: opensearchproject/opensearch-dashboards:1  # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
-    container_name: kibana
-    ports:
-      - 5601:5601 # Map host port 5601 to container port 5601
-    expose:
-      - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
-    environment:
-      OPENSEARCH_HOSTS: '["http://elasticsearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
-    depends_on:
-      - elasticsearch
-    networks:
-      - backend
-      - frontend
+  # kibana:
+  #   image: opensearchproject/opensearch-dashboards:1  # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
+  #   container_name: kibana
+  #   ports:
+  #     - 5601:5601 # Map host port 5601 to container port 5601
+  #   expose:
+  #     - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
+  #   environment:
+  #     OPENSEARCH_HOSTS: '["http://elasticsearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
+  #   depends_on:
+  #     - elasticsearch
+  #   networks:
+  #     - backend
+  #     - frontend
 
   apiserver:
     command:
@@ -85,39 +85,39 @@ services:
       - backend
       - frontend
 
-  # elasticsearch:
-  #   networks:
-  #     - backend
-  #   container_name: clearml-elastic
-  #   environment:
-  #     ES_JAVA_OPTS: -Xms2g -Xmx2g -Dlog4j2.formatMsgNoLookups=true
-  #     ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
-  #     bootstrap.memory_lock: "true"
-  #     cluster.name: clearml
-  #     cluster.routing.allocation.node_initial_primaries_recoveries: "500"
-  #     cluster.routing.allocation.disk.watermark.low: 500mb
-  #     cluster.routing.allocation.disk.watermark.high: 500mb
-  #     cluster.routing.allocation.disk.watermark.flood_stage: 500mb
-  #     discovery.zen.minimum_master_nodes: "1"
-  #     discovery.type: "single-node"
-  #     http.compression_level: "7"
-  #     node.ingest: "true"
-  #     node.name: clearml
-  #     reindex.remote.whitelist: '*.*'
-  #     xpack.monitoring.enabled: "false"
-  #     xpack.security.enabled: "false"
-  #   ulimits:
-  #     memlock:
-  #       soft: -1
-  #       hard: -1
-  #     nofile:
-  #       soft: 65536
-  #       hard: 65536
-  #   image: docker.elastic.co/elasticsearch/elasticsearch:7.17.7
-  #   restart: unless-stopped
-  #   volumes:
-  #     - ./opt/clearml/data/elastic_7:/usr/share/elasticsearch/data
-  #     - ./usr/share/elasticsearch/logs
+  elasticsearch:
+    networks:
+      - backend
+    container_name: clearml-elastic
+    environment:
+      ES_JAVA_OPTS: -Xms2g -Xmx2g -Dlog4j2.formatMsgNoLookups=true
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      bootstrap.memory_lock: "true"
+      cluster.name: clearml
+      cluster.routing.allocation.node_initial_primaries_recoveries: "500"
+      cluster.routing.allocation.disk.watermark.low: 500mb
+      cluster.routing.allocation.disk.watermark.high: 500mb
+      cluster.routing.allocation.disk.watermark.flood_stage: 500mb
+      discovery.zen.minimum_master_nodes: "1"
+      discovery.type: "single-node"
+      http.compression_level: "7"
+      node.ingest: "true"
+      node.name: clearml
+      reindex.remote.whitelist: '*.*'
+      # xpack.monitoring.enabled: "false"
+      # xpack.security.enabled: "false"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    image: nexus.okd4.inlinegroup.ru/complex/images/elasticsearch-oss:7.10.2
+    restart: unless-stopped
+    volumes:
+      - opensearch-data.08:/usr/share/elasticsearch/data
+      # - ./usr/share/elasticsearch/logs
 
   fileserver:
     networks:
